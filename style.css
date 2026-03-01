@@ -536,9 +536,9 @@ body.dither-mode .laser-line.lvl-violet {
     background: rgba(255, 255, 255, 0.22);
 }
 
-/* Track for vertical faders */
+/* Track for vertical faders (Chrome sees a horizontal input; Firefox seen below) */
 .vertical-fader::-webkit-slider-runnable-track {
-    width: 3px;
+    height: 3px;
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.22);
 }
@@ -555,7 +555,7 @@ body.dither-mode .laser-line.lvl-violet {
     height: 20px;
 }
 
-/* Vertical faders: native writing-mode approach — works in Firefox, Chrome, Safari */
+/* Vertical faders — Chrome/Safari: rotate a horizontal input */
 .fader-track {
     height: 130px;
     width: 30px;
@@ -566,43 +566,30 @@ body.dither-mode .laser-line.lvl-violet {
 }
 
 .vertical-fader {
-    /* Chrome/Safari: writing-mode makes it natively vertical */
-    writing-mode: vertical-lr;
-    direction: rtl;          /* rtl = min at bottom, max at top */
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 130px;
+    width: 130px;
+    height: 20px;
+    transform: rotate(-90deg);
+    transform-origin: center center;
     margin: 0;
     padding: 0;
     cursor: pointer;
     background: transparent;
 }
 
-/* Firefox: orient=vertical attribute makes it vertical natively */
-input[type=range][orient=vertical] {
-    writing-mode: vertical-lr;
-    direction: rtl;
-    width: 20px;
-    height: 130px;
-    cursor: pointer;
-    background: transparent;
-}
-
-input[type=range][orient=vertical]::-moz-range-track {
-    width: 3px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.22);
-}
-
-input[type=range][orient=vertical]::-moz-range-thumb {
-    height: 20px;
-    width: 20px;
-    border-radius: 50%;
-    background: #fff;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-    border: 2px solid rgba(255, 255, 255, 0.4);
+/* Firefox: override with native vertical via writing-mode + orient attribute */
+@supports (-moz-appearance: none) {
+    .fader-track {
+        width: 20px;
+    }
+    .vertical-fader {
+        writing-mode: vertical-lr;
+        direction: rtl;
+        width: 20px;
+        height: 130px;
+        transform: none;
+    }
 }
 
 

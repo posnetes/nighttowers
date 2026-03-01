@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Las Torres de la Madrugada</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="overlay">
+        <h1>Las Torres de la Madrugada</h1>
+        <p>Conecta las luces de prevención de las antenas con las entidades celestiales para afinar la red.</p>
+        <button id="startBtn">Sincronizar Señal</button>
+    </div>
+
+    <div id="hud-actions" class="hidden">
+        <div id="helpBtn" title="Acerca de">?</div>
+        <div id="ditherBtn" title="Modo Loom"><span class="dither-icon"></span></div>
+        <div id="fullscreenBtn" title="Pantalla completa"><span class="fullscreen-icon"></span></div>
+        <div id="settingsBtn" title="Mixer">⚙</div>
+    </div>
+    <!-- INFO / ABOUT PANEL -->
+    <div id="helpPanel" class="hidden sota-info">
+        <div class="mixer-header">
+            <h2>Las Torres de la Madrugada</h2>
+            <button id="closeHelpBtn" class="close-icon">×</button>
+        </div>
+        <div class="info-body">
+            <p>Experimento audiovisual de música electroacústica generativa y redes estelares paramétricas. Nueve torres de telecomunicaciones y nueve nodos celestiales forman una red de energía sonora.</p>
+            <ul>
+                <li><strong>Torres / Estrellas</strong> — haz clic para activarlas y conectar la red</li>
+                <li><strong>Láseres</strong> — la densidad de conexiones determina el nivel de sobrecarga y muta los timbres</li>
+                <li><strong>Balizas</strong> — el pulso rítmico de las luces no activas forma el tejido rítmico base</li>
+                <li><strong>Deriva</strong> — velocidad de traslación del firmamento; también modula el decay del reverb</li>
+                <li><strong>CLR</strong> — desactiva todos los nodos simultáneamente</li>
+            </ul>
+            <div class="info-scale">
+                <span class="scale-dot lvl0"></span> 1–5 nodos: tensión baja · láseres rojos
+                <span class="scale-dot lvl1"></span> 6–11: energía media · láseres cyan · FM distortion
+                <span class="scale-dot lvl2"></span> 12–18: sobrecarga crítica · láseres violeta · arpegio acelerado
+            </div>
+            <div class="info-footer">
+                <span>Afinación: C minor 11 &nbsp;·&nbsp; Tone.js + Vite</span>
+                <a href="https://github.com/vladimirobellini/soundnightlight" target="_blank" class="gh-link">github ↗</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsPanel" class="hidden sota-mixer">
+        <div class="mixer-header">
+            <h2>Consola de Sistemas</h2>
+            <button id="closeSettingsBtn" class="close-icon">×</button>
+        </div>
+
+        <div class="mixer-body">
+            <!-- MASTER FX BUS -->
+            <div class="mixer-section fx-section">
+                <h3>Master FX</h3>
+                <div class="fader-group horizontal">
+                    <label>Reverb</label>
+                    <input type="range" id="masterReverb" class="fader horizontal-fader" min="0" max="1" value="0.6"
+                        step="0.05">
+                </div>
+                <div class="fader-group horizontal">
+                    <label>Delay</label>
+                    <input type="range" id="masterDelay" class="fader horizontal-fader" min="0" max="1" value="0.7"
+                        step="0.05">
+                </div>
+                <div class="fader-group horizontal">
+                    <label>Deriva ✦</label>
+                    <input type="range" id="skyDrift" class="fader horizontal-fader" min="60" max="3600" value="900"
+                        step="60">
+                </div>
+            </div>
+
+            <div class="mixer-channels">
+                <!-- Channel Strip: Drones -->
+                <div class="channel-strip">
+                    <div class="fader-track"><input type="range" id="vol-drones" class="fader vertical-fader" min="-60"
+                            max="0" value="0" step="1"></div>
+                    <button id="mute-drones" class="mute-btn">M</button>
+                    <span class="channel-label">Drones</span>
+                </div>
+                <!-- Channel Strip: Nieve -->
+                <div class="channel-strip">
+                    <div class="fader-track"><input type="range" id="vol-noise" class="fader vertical-fader" min="-60"
+                            max="0" value="0" step="1"></div>
+                    <button id="mute-noise" class="mute-btn">M</button>
+                    <span class="channel-label">Nieve</span>
+                </div>
+                <!-- Channel Strip: Metal -->
+                <div class="channel-strip">
+                    <div class="fader-track"><input type="range" id="vol-metal" class="fader vertical-fader" min="-60"
+                            max="0" value="0" step="1"></div>
+                    <button id="mute-metal" class="mute-btn">M</button>
+                    <span class="channel-label">Metal</span>
+                </div>
+                <!-- Channel Strip: Synths -->
+                <div class="channel-strip">
+                    <div class="fader-track"><input type="range" id="vol-synths" class="fader vertical-fader" min="-60"
+                            max="0" value="0" step="1"></div>
+                    <button id="mute-synths" class="mute-btn">M</button>
+                    <span class="channel-label">Synths</span>
+                </div>
+                <!-- Channel Strip: Celestials -->
+                <div class="channel-strip">
+                    <div class="fader-track"><input type="range" id="vol-pads" class="fader vertical-fader" min="-60"
+                            max="0" value="0" step="1"></div>
+                    <button id="mute-pads" class="mute-btn">M</button>
+                    <span class="channel-label">Celestial</span>
+                </div>
+                <!-- Channel Strip: Balizas -->
+                <div class="channel-strip">
+                    <div class="fader-track"><input type="range" id="vol-balizas" class="fader vertical-fader" min="-60"
+                            max="0" value="0" step="1"></div>
+                    <button id="mute-balizas" class="mute-btn">M</button>
+                    <span class="channel-label">Balizas</span>
+                </div>
+                <!-- Channel Strip: Master Output -->
+                <div class="channel-strip master-strip">
+                    <div class="fader-track"><input type="range" id="masterVolume" class="fader vertical-fader"
+                            min="-60" max="0" value="0" step="1"></div>
+                    <button id="clearBtn" class="clear-btn">CLR</button>
+                    <span class="channel-label highlight">Master</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene" class="hidden">
+        <!-- Dither overlay: scanlines + noise grain -->
+        <div id="dither-overlay"></div>
+        <!-- Sky layer: drifts slowly as the night passes -->
+        <div id="sky-layer">
+            <div id="stars-bg"></div>
+            <!-- Estrellas Interactivas (Firmamento) -->
+            <div class="star main-node celestial s1" data-id="9"></div>
+            <div class="star main-node celestial s2" data-id="10"></div>
+            <div class="star main-node celestial s3" data-id="11"></div>
+            <div class="star main-node celestial s4" data-id="12"></div>
+            <div class="star main-node celestial s5" data-id="13"></div>
+            <div class="star main-node celestial s6" data-id="14"></div>
+            <div class="star main-node celestial s7" data-id="15"></div>
+            <div class="star main-node celestial s8" data-id="16"></div>
+            <div class="star main-node celestial s9" data-id="17"></div>
+        </div>
+
+        <!-- Líneas láser de conexión -->
+        <svg id="connections" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <!-- Las web-lines mágicas -->
+        </svg>
+
+        <!-- Auto en la carretera (aparece aleatoriamente) -->
+        <div id="car-light"></div>
+
+        <!-- Cordillera: capa lejana (neblina atmosférica) -->
+        <div id="horizon-far">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="mountainFarGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#1a2550" stop-opacity="0.6"/>
+                        <stop offset="100%" stop-color="#0d1435" stop-opacity="0.9"/>
+                    </linearGradient>
+                </defs>
+                <path
+                    d="M0,100 L0,72 C3,69 6,65 9,61 C12,57 14,59 17,63 C19,67 21,63 23,58 C25,53 27,47 30,42 C33,38 35,40 37,44 C39,48 40,45 42,42 C44,38 46,34 49,30 C52,26 54,28 56,32 C58,36 59,38 61,40 C63,38 65,34 67,30 C69,26 71,23 73,26 C75,30 77,34 79,36 C81,33 83,30 85,26 C87,22 89,19 91,23 C93,27 95,31 97,35 C98,37 99,39 100,42 L100,100 Z"
+                    fill="url(#mountainFarGrad)"></path>
+            </svg>
+        </div>
+
+        <!-- Silueta primer plano — montañas absolutas negras -->
+        <div id="horizon">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path
+                    d="M0,100 L0,84 C2,82 4,80 6,77 C8,74 10,76 12,78 C14,76 16,72 18,69 C20,66 22,68 24,72 C26,76 28,72 30,67 C33,61 35,54 38,48 C41,44 43,46 45,50 C47,52 48,49 50,46 C52,42 54,38 57,33 C60,29 62,31 64,35 C66,39 67,41 69,43 C71,40 73,37 75,33 C77,29 79,26 81,29 C83,33 85,37 87,39 C89,37 91,34 93,38 C95,42 97,46 99,52 L100,55 L100,100 Z"
+                    fill="#000000"></path>
+            </svg>
+        </div>
+
+        <!-- The 9 Interactive Towers (Shorter, lower perspective) -->
+        <!-- They still use main-node for JS logic -->
+        <div class="tower t1">
+            <div class="beacon main-node" data-id="0"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t2">
+            <div class="beacon main-node" data-id="1"></div>
+            <div class="beacon secondary" style="bottom: 40%"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t3">
+            <div class="beacon main-node" data-id="2"></div>
+            <div class="beacon secondary" style="bottom: 70%"></div>
+            <div class="beacon secondary" style="bottom: 30%"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t4">
+            <div class="beacon main-node" data-id="3"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t5">
+            <div class="beacon main-node" data-id="4"></div>
+            <div class="beacon secondary" style="bottom: 55%"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t6">
+            <div class="beacon main-node" data-id="5"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t7">
+            <div class="beacon main-node" data-id="6"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t8">
+            <div class="beacon main-node" data-id="7"></div>
+            <div class="beacon secondary" style="bottom: 65%"></div>
+            <div class="beacon secondary" style="bottom: 35%"></div>
+            <div class="structure"></div>
+        </div>
+
+        <div class="tower t9">
+            <div class="beacon main-node" data-id="8"></div>
+            <div class="structure"></div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+
+    <!-- SVG filter definitions (hidden) -->
+    <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
+        <defs>
+            <!-- Posterize to ~8 Loom-style color steps -->
+            <filter id="dither-posterize" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+                <feComponentTransfer>
+                    <feFuncR type="discrete" tableValues="0 0.07 0.16 0.28 0.44 0.60 0.80 1"/>
+                    <feFuncG type="discrete" tableValues="0 0.05 0.14 0.30 0.48 0.65 0.82 1"/>
+                    <feFuncB type="discrete" tableValues="0 0.12 0.28 0.46 0.62 0.78 0.92 1"/>
+                </feComponentTransfer>
+            </filter>
+        </defs>
+    </svg>
+</body>
+
+</html>

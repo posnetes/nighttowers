@@ -536,15 +536,9 @@ body.dither-mode .laser-line.lvl-violet {
     background: rgba(255, 255, 255, 0.22);
 }
 
-/* Track for vertical faders (Chrome sees a horizontal input; Firefox seen below) */
+/* Track for vertical faders (Chrome sees a horizontal input, Firefox handled in @supports below) */
 .vertical-fader::-webkit-slider-runnable-track {
     height: 3px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.22);
-}
-
-.vertical-fader::-moz-range-track {
-    width: 3px;
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.22);
 }
@@ -589,6 +583,25 @@ body.dither-mode .laser-line.lvl-violet {
         width: 20px;
         height: 130px;
         transform: none;
+    }
+    .vertical-fader::-moz-range-track {
+        width: 3px;
+        height: 120px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.35);
+    }
+    .vertical-fader::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fff;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+    }
+    .vertical-fader::-moz-range-progress {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
     }
 }
 

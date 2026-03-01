@@ -89,8 +89,8 @@ button:hover {
         0deg,
         transparent,
         transparent 2px,
-        rgba(0, 0, 30, 0.13) 2px,
-        rgba(0, 0, 30, 0.13) 3px
+        rgba(0, 0, 10, 0.10) 2px,
+        rgba(0, 0, 10, 0.10) 3px
     );
     mix-blend-mode: multiply;
 }
@@ -111,52 +111,43 @@ body.dither-mode #dither-overlay {
     display: block;
 }
 
-/* Posterize the whole scene + stepped sky gradient in dither mode */
+/* Posterize the whole scene — EGA dark navy palette */
 body.dither-mode #scene {
-    filter: url(#dither-posterize) contrast(1.08) saturate(0.85);
+    filter: url(#dither-posterize) brightness(0.82) saturate(0.55);
     image-rendering: pixelated;
     overflow: hidden;
+    /* Hard-stepped sky gradient — each stop is a distinct EGA color band */
     background:
-        radial-gradient(ellipse 60% 30% at 72% 88%, rgba(30,10,10,0.55) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 20% at 30% 95%, rgba(0,5,30,0.5) 0%, transparent 60%),
         linear-gradient(to bottom,
-            #000008 0%,    #000008 6%,
-            #000515 6%,    #000515 12%,
-            #010c2a 12%,   #010c2a 20%,
-            #031442 20%,   #031442 28%,
-            #0a1e5c 28%,   #0a1e5c 36%,
-            #102470 36%,   #102470 44%,
-            #0e1a58 44%,   #0e1a58 52%,
-            #140f40 52%,   #140f40 60%,
-            #1a0a34 60%,   #1a0a34 70%,
-            #1e1028 70%,   #1e1028 82%,
-            #180c1c 82%,   #180c1c 92%,
-            #0e0810 92%,   #0e0810 100%);
+            #000005 0%,    #000005 7%,
+            #000318 7%,    #000318 14%,
+            #000c38 14%,   #000c38 22%,
+            #001460 22%,   #001460 30%,
+            #001880 30%,   #001880 38%,
+            #001070 38%,   #001070 46%,
+            #000858 46%,   #000858 54%,
+            #000440 54%,   #000440 62%,
+            #000228 62%,   #000228 72%,
+            #00010e 72%,   #00010e 84%,
+            #000008 84%,   #000008 100%);
 }
 
-/* Horizontal cyan/teal color bands in the upper sky — Loom signature */
+/* Dither dot transition bands between sky color steps */
 body.dither-mode #scene::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background-image:
-        repeating-linear-gradient(
-            0deg,
-            transparent           0px,
-            transparent           29px,
-            rgba(0, 60, 90, 0.13) 29px,
-            rgba(0, 60, 90, 0.13) 30px,
-            transparent           30px,
-            transparent           59px,
-            rgba(0, 40, 70, 0.08) 59px,
-            rgba(0, 40, 70, 0.08) 60px
-        );
-    background-size: 100% 60px;
-    /* Only in the sky, not on mountains */
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 72%);
-    mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 72%);
+    /* 2×2 Bayer checkerboard to simulate color-step dithering */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='2' height='2' fill='rgba(0,20,80,0.18)'/%3E%3Crect x='2' y='2' width='2' height='2' fill='rgba(0,20,80,0.18)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 4px 4px;
+    mix-blend-mode: screen;
+    opacity: 0.6;
+    /* Only in sky */
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 68%);
+    mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 68%);
 }
 
 /* Stars more pixelated in dither mode */
@@ -166,18 +157,18 @@ body.dither-mode #stars-bg {
     opacity: 0.9;
 }
 
-/* Mountains tinted deep navy-blue (Loom palette) */
+/* Mountains: true near-black (Loom silhouette) */
 body.dither-mode #horizon path {
-    fill: #04081a;
+    fill: #010208;
 }
 
 body.dither-mode #horizon-far {
-    filter: blur(0.5px) url(#dither-posterize);
-    opacity: 0.85;
+    filter: none;
+    opacity: 0.9;
 }
 
 body.dither-mode #horizon-far path {
-    fill: #0a1640;
+    fill: #040c30;
 }
 
 /* Towers: slightly blue-tinted in dither mode */

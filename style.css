@@ -193,57 +193,84 @@ body.dither-mode .laser-line.lvl-violet {
     animation: pulseLaserDither 0.5s steps(1) infinite alternate;
 }
 
-/* ── INTERACTIVE NODES: force solid EGA colors, kill transparency/glow ──────
-   Without this, nodes at opacity < 0.5 composite to near-black on the dark
-   background and the EGA quantize filter snaps them to [0,0,0] → invisible.
-   Pointer events (::after hitboxes) are DOM-based and unaffected by filter. */
+/* ── INTERACTIVE NODES: EGA color-cycle animations, opacity always 1 ─────────
+   The feComponentTransfer filter composites all #scene children before
+   quantizing. Any opacity < ~0.5 composites the element color toward the
+   dark background; the EGA filter then snaps it to black → invisible.
+   Fix: keep opacity:1 at all times, animate background-color between EGA
+   palette entries. The filter sees full-opacity colors → natural stepped blink.
+   We set animation sub-properties individually (not the shorthand) so that
+   animation-delay from .s1/.s2/… per-star classes is preserved. */
 
-/* Beacons (tower lights) — inactive: solid EGA dark red, always visible */
+/* Beacons (inactive) — mirror original blink pattern via EGA color phases */
 body.dither-mode .beacon.main-node:not(.celestial) {
     opacity: 1 !important;
-    animation: beaconDither 0.7s steps(1) infinite alternate !important;
-    background: #aa0000 !important;  /* EGA dark red */
+    animation-name:            beaconDither !important;
+    animation-duration:        1.5s !important;
+    animation-timing-function: steps(1) !important;
+    animation-iteration-count: infinite !important;
+    animation-direction:       normal !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     transform: scale(1) !important;
 }
 
-/* Beacons — active: EGA bright red, larger */
+/* Beacons (active) */
 body.dither-mode .beacon.main-node:not(.celestial).active {
-    animation: beaconDitherActive 0.4s steps(1) infinite alternate !important;
-    background: #ff5555 !important;  /* EGA bright red */
+    animation-name:            beaconDitherActive !important;
+    animation-duration:        1.2s !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
+    animation-direction:       alternate !important;
     box-shadow: none !important;
     transform: scale(1.4) !important;
     border-radius: 0 !important;
 }
 
+/* Match original blink: 0-30% off, 31-60% on, 61-100% off  */
 @keyframes beaconDither {
-    0%   { background: #550000 !important; } /* EGA off */
-    100% { background: #aa0000 !important; } /* EGA on */
+    0%,  30%  { background: #000000 !important; }
+    31%, 60%  { background: #aa0000 !important; } /* EGA dark red */
+    61%, 100% { background: #000000 !important; }
 }
 
 @keyframes beaconDitherActive {
-    0%   { background: #aa0000 !important; }
-    100% { background: #ff5555 !important; }
+    0%   { background: #aa0000 !important; } /* EGA dark red */
+    100% { background: #ff5555 !important; } /* EGA bright red */
 }
 
-/* Celestial stars — inactive: solid EGA blue-white, no blink fade */
+/* Celestial stars (inactive) — twinkle via EGA color cycle, preserve per-star delay */
 body.dither-mode .celestial {
     opacity: 1 !important;
-    animation: none !important;
-    background: #5555ff !important;  /* EGA bright blue — visible on black sky */
+    animation-name:            celestialDither !important;
+    animation-duration:        3.5s !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
+    animation-direction:       alternate !important;
+    /* animation-delay: inherited from .s1/.s2/… — not overridden here */
+    background: #0000aa !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    /* Slightly enlarge so they don't disappear at 2px */
     width: 3px !important;
     height: 3px !important;
     transform: scale(1) !important;
 }
 
-/* Celestial stars — active: EGA bright cyan */
+/* Cycle: dark blue (off) → bright blue (mid) → bright cyan (peak) */
+@keyframes celestialDither {
+    0%   { background: #0000aa !important; } /* EGA dark blue — dim */
+    50%  { background: #5555ff !important; } /* EGA bright blue — mid */
+    100% { background: #55ffff !important; } /* EGA bright cyan — peak */
+}
+
+/* Celestial stars (active) */
 body.dither-mode .celestial.active {
-    animation: celestialDitherActive 0.5s steps(1) infinite alternate !important;
-    background: #55ffff !important;  /* EGA bright cyan */
+    animation-name:            celestialDitherActive !important;
+    animation-duration:        1.8s !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
+    animation-direction:       alternate !important;
+    background: #55ffff !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     width: 5px !important;
@@ -252,12 +279,14 @@ body.dither-mode .celestial.active {
 }
 
 @keyframes celestialDitherActive {
-    0%   { background: #0000aa !important; } /* EGA dark blue */
-    100% { background: #55ffff !important; } /* EGA bright cyan */
+    0%   { background: #5555ff !important; } /* EGA bright blue */
+    100% { background: #ffffff !important; } /* EGA white */
 }
 
+/* Violet laser pulse: keep opacity in 0.7-1.0 range so compositing never
+   approaches zero — below 0.5 the EGA filter would snap to black */
 @keyframes pulseLaserDither {
-    0%   { opacity: 0.3; }
+    0%   { opacity: 0.7; }
     100% { opacity: 1.0; }
 }
 

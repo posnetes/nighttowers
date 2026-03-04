@@ -95,7 +95,9 @@ button:hover {
     mix-blend-mode: multiply;
 }
 
-/* Ordered dithering texture: 4x4 Bayer-ish checkerboard at transitions */
+/* Ordered dithering texture: disabled in dither-mode — the EGA canvas handles
+   real Bayer pixel dithering directly. Keeping ::after only for non-dither overlay use.
+   In dither-mode this pseudo-element is suppressed below to avoid smearing the canvas. */
 #dither-overlay::after {
     content: '';
     position: absolute;
@@ -105,6 +107,11 @@ button:hover {
     background-size: 4px 4px;
     mix-blend-mode: overlay;
     opacity: 0.55;
+}
+
+/* In dither-mode: disable the CSS Bayer overlay — canvas is the authority */
+body.dither-mode #dither-overlay::after {
+    display: none;
 }
 
 body.dither-mode #dither-overlay {
@@ -122,10 +129,6 @@ body.dither-mode #dither-overlay {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     pointer-events: none;
-}
-
-body.dither-mode #ega-canvas {
-    display: block;
 }
 
 /* ── EGA DITHER MODE — Monkey Island 1 / Loom 1990 aesthetic ─────────────────
@@ -163,9 +166,19 @@ body.dither-mode #stars-bg {
 }
 
 /* EGA canvas: cover the full scene, bloque de 3×3px por pixel EGA */
+/* Palette-cycling pulse: simulates the slow EGA darkness-breathing of MI1/Loom night skies.
+   Steps(3) gives authentic 3-frame palette cycle feel, not a smooth CSS blur. */
 body.dither-mode #ega-canvas {
     display: block;
     z-index: 0; /* below sky-layer (z:1) so interactive stars stay on top */
+    animation: egaPaletteCycle 8s steps(3, end) infinite alternate;
+}
+
+@keyframes egaPaletteCycle {
+    0%   { opacity: 1.00; }
+    33%  { opacity: 0.93; }
+    66%  { opacity: 0.97; }
+    100% { opacity: 0.90; }
 }
 
 /* Sky-layer: transparent so canvas shows through; interactive stars stay visible */
@@ -190,24 +203,7 @@ body.dither-mode .t9 .structure {
 }
 
 /* ── LASER CONNECTIONS: thick EGA lines, no glow ── */
-body.dither-mode .laser-line {
-    stroke: #aa0000;  /* EGA dark red */
-    stroke-width: 0.5;
-    filter: none;
-    opacity: 1;
-}
-body.dither-mode .laser-line.lvl-cyan {
-    stroke: #55ffff;  /* EGA bright cyan */
-    stroke-width: 0.5;
-    filter: none;
-    opacity: 1;
-}
-body.dither-mode .laser-line.lvl-violet {
-    stroke: #ff55ff;  /* EGA bright magenta */
-    stroke-width: 0.5;
-    filter: none;
-    animation: pulseLaserDither 0.6s steps(1) infinite alternate;
-}
+/* (stroke-width defined once below in the canonical block; this block removed to avoid cascade conflict) */
 
 /* ── INTERACTIVE NODES: EGA color-cycle animations, opacity always 1 ─────────
    No feComponentTransfer on #scene (v3 engine). Canvas handles background.
@@ -257,33 +253,41 @@ body.dither-mode .beacon.main-node:not(.celestial).active {
     100% { background: #ff5555; } /* EGA bright red — on phase */
 }
 
-/* ── CELESTIAL STARS (inactive) — 7×7px, always bright, hard EGA step twinkle ── */
+/* ── CELESTIAL STARS (inactive) — pulso lento EGA: fade discreto de 8 pasos ── */
 body.dither-mode .celestial {
     opacity: 1 !important;
     animation-name:            celestialDither !important;
-    animation-duration:        3.5s !important;
-    animation-timing-function: steps(2, end) !important;
+    animation-duration:        4.0s !important;
+    animation-timing-function: steps(8, end) !important;  /* 8 pasos = pulse suave EGA */
     animation-iteration-count: infinite !important;
     animation-direction:       alternate !important;
-    /* delay inherited from .s1/.s2/… */
-    background: #5555ff !important;   /* EGA bright blue — never dark */
-    /* Small pixel cross so they're always findable even at dim phase */
-    box-shadow:
-        2px  0   0 0 #55ffff,
-       -2px  0   0 0 #55ffff,
-        0    2px 0 0 #55ffff,
-        0   -2px 0 0 #55ffff !important;
+    /* delay inherited from .s1/.s2/… keeps stars out of sync between themselves */
     border-radius: 0 !important;
     width: 7px !important;
     height: 7px !important;
     transform: scale(1) !important;
 }
 
-/* Bright blue → cyan → white — always visible against dark sky */
+/* Pulse EGA: negro → azul oscuro → azul → cyan → blanco → de vuelta
+   opacity baja de 0.15 a 1 y vuelve — simula el fade in/out del modo normal
+   manteniendo la paleta de 16 colores EGA y la estética pixel-art */
 @keyframes celestialDither {
-    0%   { background: #5555ff; box-shadow: 2px 0 0 0 #55ffff, -2px 0 0 0 #55ffff, 0 2px 0 0 #55ffff, 0 -2px 0 0 #55ffff; }
-    50%  { background: #55ffff; box-shadow: 2px 0 0 0 #ffffff, -2px 0 0 0 #ffffff, 0 2px 0 0 #ffffff, 0 -2px 0 0 #ffffff; }
-    100% { background: #ffffff; box-shadow: 2px 0 0 0 #55ffff, -2px 0 0 0 #55ffff, 0 2px 0 0 #55ffff, 0 -2px 0 0 #55ffff; }
+    0%   { background: #000000; opacity: 0.10;
+           box-shadow: none; }
+    14%  { background: #000055; opacity: 0.25;
+           box-shadow: 2px 0 0 0 #000055, -2px 0 0 0 #000055, 0 2px 0 0 #000055, 0 -2px 0 0 #000055; }
+    28%  { background: #0000aa; opacity: 0.45;
+           box-shadow: 2px 0 0 0 #0000aa, -2px 0 0 0 #0000aa, 0 2px 0 0 #0000aa, 0 -2px 0 0 #0000aa; }
+    42%  { background: #5555ff; opacity: 0.65;
+           box-shadow: 2px 0 0 0 #5555ff, -2px 0 0 0 #5555ff, 0 2px 0 0 #5555ff, 0 -2px 0 0 #5555ff; }
+    57%  { background: #5555ff; opacity: 0.80;
+           box-shadow: 2px 0 0 0 #55ffff, -2px 0 0 0 #55ffff, 0 2px 0 0 #55ffff, 0 -2px 0 0 #55ffff; }
+    71%  { background: #55ffff; opacity: 0.90;
+           box-shadow: 2px 0 0 0 #55ffff, -2px 0 0 0 #55ffff, 0 2px 0 0 #55ffff, 0 -2px 0 0 #55ffff; }
+    85%  { background: #ffffff; opacity: 1.00;
+           box-shadow: 2px 0 0 0 #ffffff, -2px 0 0 0 #ffffff, 0 2px 0 0 #ffffff, 0 -2px 0 0 #ffffff; }
+    100% { background: #ffffff; opacity: 1.00;
+           box-shadow: 2px 0 0 0 #55ffff, -2px 0 0 0 #55ffff, 0 2px 0 0 #55ffff, 0 -2px 0 0 #55ffff; }
 }
 
 /* ── CELESTIAL STARS (active) — 10×10px, fast flash + pixel cross halo ── */
@@ -339,6 +343,121 @@ body.dither-mode .laser-line.lvl-violet {
 @keyframes pulseLaserDither {
     0%   { opacity: 0; }
     100% { opacity: 1; }
+}
+
+/* ── DITHER MODE: CAR — EGA pixel-art headlights, no blur ── */
+body.dither-mode .car-body {
+    background: #000000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body.dither-mode .car-body::before {
+    background: #000000 !important;
+    border-radius: 0 !important;
+}
+
+/* LTR taillights EGA dark-red pixel */
+body.dither-mode #car-light.car-ltr .car-body {
+    box-shadow: -4px 4px 0 2px #aa0000 !important;
+}
+
+/* RTL taillights EGA dark-red pixel */
+body.dither-mode #car-light.car-rtl .car-body {
+    box-shadow: 4px 4px 0 2px #aa0000 !important;
+}
+
+/* LTR headlights: two EGA bright-yellow pixel squares */
+body.dither-mode #car-light.car-ltr .car-body::after {
+    content: '' !important;
+    position: absolute !important;
+    right: -3px !important;
+    top: 2px !important;
+    width: 3px !important;
+    height: 3px !important;
+    background: #ffff55 !important;       /* EGA bright yellow */
+    border-radius: 0 !important;
+    box-shadow:
+        0   6px 0 0 #ffff55,              /* second headlight pixel */
+        4px 0   0 0 #ffff55,
+        4px 6px 0 0 #ffff55 !important;
+    filter: none !important;
+}
+
+/* RTL headlights */
+body.dither-mode #car-light.car-rtl .car-body::after {
+    content: '' !important;
+    position: absolute !important;
+    left: -3px !important;
+    top: 2px !important;
+    width: 3px !important;
+    height: 3px !important;
+    background: #ffff55 !important;
+    border-radius: 0 !important;
+    box-shadow:
+        0    6px 0 0 #ffff55,
+        -4px 0   0 0 #ffff55,
+        -4px 6px 0 0 #ffff55 !important;
+    filter: none !important;
+}
+
+/* Beam cone: EGA yellow, no blur */
+body.dither-mode #car-light::before {
+    border-left-color:  rgba(255, 255, 85, 0.30) !important;
+    border-right-color: rgba(255, 255, 85, 0.30) !important;
+    filter: none !important;
+}
+
+/* Ground pool: simpler in dither mode */
+body.dither-mode #car-light::after {
+    filter: none !important;
+    opacity: 0.5 !important;
+}
+
+/* ── DITHER MODE: UFO — EGA saucer, pixel running lights, green beam ── */
+body.dither-mode .ufo-saucer {
+    background: #0000aa !important;       /* EGA dark blue */
+    border-radius: 0 !important;
+    box-shadow:
+        0    0 0 1px #55ffff,
+        -6px 0 0 1px #55ffff,
+         6px 0 0 1px #55ffff !important;
+    animation: ufoHoverDither 1.4s steps(2, end) infinite alternate !important;
+    filter: none !important;
+}
+
+body.dither-mode .ufo-saucer::before {
+    background: #5555ff !important;       /* EGA bright blue dome */
+    border-radius: 0 !important;
+    box-shadow: 0 0 0 1px #55ffff !important;
+    filter: none !important;
+}
+
+/* Running lights: step-animate with EGA palette (no blur) */
+body.dither-mode .ufo-saucer::after {
+    box-shadow:
+         9px 0 0 2px #ffff55,             /* EGA bright yellow */
+        22px 0 0 2px #55ff55,             /* EGA bright green */
+        36px 0 0 2px #ff5555,             /* EGA bright red */
+        15px 0 0 2px #ff55ff !important;  /* EGA bright magenta */
+    filter: none !important;
+}
+
+/* Tractor beam: EGA bright green, hard steps blink */
+body.dither-mode .ufo-beam {
+    border-top-color: rgba(85, 255, 85, 0.45) !important;
+    filter: none !important;
+    animation: ufoBeamDither 0.5s steps(1) infinite alternate !important;
+}
+
+@keyframes ufoHoverDither {
+    0%   { transform: translateY(0px);  }
+    100% { transform: translateY(-3px); }
+}
+
+@keyframes ufoBeamDither {
+    0%   { opacity: 0.35; }
+    100% { opacity: 1.00; }
 }
 
 /* Dither button active state */
@@ -445,8 +564,8 @@ body.dither-mode .laser-line.lvl-violet {
     border-radius: 12px;
     padding: 30px;
     z-index: 510;
-    width: 600px;
-    max-width: 90vw;
+    width: 820px;
+    max-width: 95vw;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
@@ -540,14 +659,22 @@ body.dither-mode .laser-line.lvl-violet {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     flex: 1;
-    min-width: 52px;
-    padding: 15px 5px;
+    min-width: 42px;
+    padding: 12px 4px;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.02);
     overflow: visible;
+}
+
+/* Icon at top of each channel strip */
+.channel-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+    opacity: 0.55;
+    user-select: none;
 }
 
 .channel-strip.master-strip {
@@ -566,6 +693,16 @@ body.dither-mode .laser-line.lvl-violet {
     color: #ff5533;
     opacity: 1;
     font-weight: bold;
+}
+
+.channel-sublabel {
+    font-size: 0.58rem;
+    text-transform: lowercase;
+    letter-spacing: 0.3px;
+    opacity: 0.35;
+    text-align: center;
+    line-height: 1.2;
+    margin-top: -6px;
 }
 
 .mute-btn,
@@ -890,69 +1027,153 @@ body.dither-mode .laser-line.lvl-violet {
     to   { transform: translateX(-6.9%); }
 }
 
-/* CAR LIGHT — cono de faros en la carretera al pie de las montañas */
+/* CAR LIGHT — faros reales, iluminación de calzada y silueta del auto */
 #car-light {
     position: absolute;
-    bottom: 3.5%;       /* base del valle, a ras del suelo */
-    z-index: 22;        /* encima de todo, incluido montañas (z-index 20) */
+    bottom: 3.5%;
+    z-index: 22;
     pointer-events: none;
     display: none;
 }
 
 #car-light.car-active { display: block; }
 
-/* Dot: la fuente del haz (cuerpo del auto, muy sutil) */
-#car-light::before,
-#car-light::after {
-    content: '';
+/* ── Car body silhouette ── */
+.car-body {
     position: absolute;
+    bottom: 3px;
+    width: 46px;
+    height: 11px;
+    background: #060606;
+    border-radius: 2px 2px 0 0;
 }
 
-/* Cone pointing right (LTR) — haz se abre hacia adelante-abajo */
+/* Cabin roofline — raised bump in the middle */
+.car-body::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 28%;
+    width: 42%;
+    height: 7px;
+    background: #050505;
+    border-radius: 4px 4px 0 0;
+}
+
+/* ── LTR (going right) — headlights on right, taillights on left ── */
 #car-light.car-ltr {
     animation: carMoveLTR var(--car-duration, 24000ms) linear forwards;
 }
+
+#car-light.car-ltr .car-body {
+    left: 0;
+    /* Taillight: dim red glow on left */
+    box-shadow: -4px 4px 5px 2px rgba(200, 35, 10, 0.60);
+}
+
+/* Headlight dots LTR — two bright yellow points at front-right */
+#car-light.car-ltr .car-body::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 2px;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 200, 0.95);
+    border-radius: 50%;
+    /* Upper + lower headlight pair */
+    box-shadow:
+        0    7px 0   0   rgba(255, 255, 200, 0.95),
+        6px  0   6px 4px rgba(255, 252, 160, 0.85),
+        6px  7px 6px 4px rgba(255, 252, 160, 0.80);
+}
+
+/* Light cone: LTR — triangle spreading rightward */
 #car-light.car-ltr::before {
-    /* Cono principal: más abertura abajo que arriba → luz golpea el suelo */
-    top: -3px;
-    left: 2px;
+    content: '';
+    position: absolute;
+    left: 46px;
+    top: -6px;
     width: 0;
     height: 0;
-    border-top: 3px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-left: 70px solid rgba(255, 250, 200, 0.22);
-    filter: blur(2.5px);
+    border-top:    8px solid transparent;
+    border-bottom: 22px solid transparent;
+    border-left:   110px solid rgba(255, 250, 180, 0.14);
+    filter: blur(5px);
 }
+
+/* Ground illumination pool: LTR */
 #car-light.car-ltr::after {
-    /* Glow difuso del haz sobre la calzada */
-    top: -6px;
-    left: -2px;
-    width: 100px;
-    height: 18px;
-    background: radial-gradient(ellipse 100% 50% at 2% 70%, rgba(255, 248, 160, 0.30), transparent 72%);
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 4px;
+    width: 160px;
+    height: 36px;
+    background:
+        radial-gradient(ellipse 65% 55% at 6% 25%,
+            rgba(255, 248, 130, 0.52) 0%,
+            rgba(255, 244, 90,  0.22) 40%,
+            transparent 74%),
+        radial-gradient(ellipse 35% 75% at 6% 60%,
+            rgba(255, 250, 170, 0.28) 0%,
+            transparent 68%);
     filter: blur(6px);
 }
 
-/* Cone pointing left (RTL) */
+/* ── RTL (going left) — headlights on left, taillights on right ── */
 #car-light.car-rtl {
     animation: carMoveRTL var(--car-duration, 24000ms) linear forwards;
 }
+
+#car-light.car-rtl .car-body {
+    right: 0;
+    box-shadow: 4px 4px 5px 2px rgba(200, 35, 10, 0.60);
+}
+
+#car-light.car-rtl .car-body::after {
+    content: '';
+    position: absolute;
+    left: -3px;
+    top: 2px;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 200, 0.95);
+    border-radius: 50%;
+    box-shadow:
+        0    7px 0   0   rgba(255, 255, 200, 0.95),
+        -6px 0   6px 4px rgba(255, 252, 160, 0.85),
+        -6px 7px 6px 4px rgba(255, 252, 160, 0.80);
+}
+
 #car-light.car-rtl::before {
-    top: -3px;
-    right: 2px;
+    content: '';
+    position: absolute;
+    right: 46px;
+    top: -6px;
     width: 0;
     height: 0;
-    border-top: 3px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-right: 70px solid rgba(255, 250, 200, 0.22);
-    filter: blur(2.5px);
+    border-top:    8px solid transparent;
+    border-bottom: 22px solid transparent;
+    border-right:  110px solid rgba(255, 250, 180, 0.14);
+    filter: blur(5px);
 }
+
 #car-light.car-rtl::after {
-    top: -6px;
-    right: -2px;
-    width: 100px;
-    height: 18px;
-    background: radial-gradient(ellipse 100% 50% at 98% 70%, rgba(255, 248, 160, 0.30), transparent 72%);
+    content: '';
+    position: absolute;
+    right: 30px;
+    top: 4px;
+    width: 160px;
+    height: 36px;
+    background:
+        radial-gradient(ellipse 65% 55% at 94% 25%,
+            rgba(255, 248, 130, 0.52) 0%,
+            rgba(255, 244, 90,  0.22) 40%,
+            transparent 74%),
+        radial-gradient(ellipse 35% 75% at 94% 60%,
+            rgba(255, 250, 170, 0.28) 0%,
+            transparent 68%);
     filter: blur(6px);
 }
 
@@ -969,6 +1190,116 @@ body.dither-mode .laser-line.lvl-violet {
     92%  { opacity: 1; }
     100% { left: -4%;   opacity: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   OVNI — 1950s flying saucer. Aparece aleatoriamente en el cielo.
+   ═══════════════════════════════════════════════════════════════════ */
+#ufo-light {
+    position: absolute;
+    bottom: 52%;        /* mid-sky, above mountain silhouettes */
+    z-index: 18;
+    pointer-events: none;
+    display: none;
+}
+
+#ufo-light.ufo-active { display: block; }
+
+/* Saucer disc */
+.ufo-saucer {
+    position: relative;
+    width: 54px;
+    height: 14px;
+    background: radial-gradient(ellipse 85% 80% at 50% 65%,
+        #c8e8ff 0%,
+        #4499cc 50%,
+        #112244 100%);
+    border-radius: 50%;
+    box-shadow:
+        0 0 14px 5px rgba(80, 200, 255, 0.50),
+        0 0 32px 10px rgba(40, 160, 255, 0.22),
+        0 3px 8px 2px rgba(0, 60, 120, 0.55);
+    animation: ufoHover 2.6s ease-in-out infinite alternate;
+}
+
+/* Dome */
+.ufo-saucer::before {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 18px;
+    top: -15px;
+    left: 15px;
+    background: radial-gradient(ellipse 75% 85% at 42% 62%,
+        rgba(230, 248, 255, 0.95) 0%,
+        rgba(110, 210, 255, 0.65) 50%,
+        rgba(40, 110, 200, 0.28) 100%);
+    border-radius: 50% 50% 20% 20%;
+    box-shadow: 0 0 10px 3px rgba(120, 215, 255, 0.40);
+}
+
+/* Running lights ring — pixel blobs that step-animate */
+.ufo-saucer::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 6px;
+    top: 4px;
+    left: 0;
+    background: transparent;
+    box-shadow:
+         9px 0 4px 2px rgba(255, 255,  80, 0.85),
+        22px 0 4px 2px rgba( 80, 255, 190, 0.75),
+        36px 0 4px 2px rgba(255, 130,  40, 0.80),
+        15px 0 4px 2px rgba(210,  80, 255, 0.65);
+    animation: ufoLightsStep 1.0s steps(4, end) infinite;
+}
+
+/* Tractor beam */
+.ufo-beam {
+    margin-left: 13px;
+    width: 0;
+    height: 0;
+    border-left:  14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top:   38px solid rgba(80, 255, 160, 0.14);
+    filter: blur(4px);
+    animation: ufoBeamPulse 1.9s ease-in-out infinite alternate;
+}
+
+@keyframes ufoHover {
+    0%   { transform: translateY(0px);   }
+    100% { transform: translateY(-5px);  }
+}
+
+@keyframes ufoLightsStep {
+    0%   { box-shadow:  9px 0 4px 2px rgba(255,255, 80,0.85), 22px 0 4px 2px rgba( 80,255,190,0.75), 36px 0 4px 2px rgba(255,130, 40,0.80), 15px 0 4px 2px rgba(210, 80,255,0.65); }
+    25%  { box-shadow:  9px 0 4px 2px rgba(210, 80,255,0.65), 22px 0 4px 2px rgba(255,255, 80,0.85), 36px 0 4px 2px rgba( 80,255,190,0.75), 15px 0 4px 2px rgba(255,130, 40,0.80); }
+    50%  { box-shadow:  9px 0 4px 2px rgba(255,130, 40,0.80), 22px 0 4px 2px rgba(210, 80,255,0.65), 36px 0 4px 2px rgba(255,255, 80,0.85), 15px 0 4px 2px rgba( 80,255,190,0.75); }
+    75%  { box-shadow:  9px 0 4px 2px rgba( 80,255,190,0.75), 22px 0 4px 2px rgba(255,130, 40,0.80), 36px 0 4px 2px rgba(210, 80,255,0.65), 15px 0 4px 2px rgba(255,255, 80,0.85); }
+}
+
+@keyframes ufoBeamPulse {
+    0%   { opacity: 0.45; transform: scaleX(0.85); }
+    100% { opacity: 1.00; transform: scaleX(1.20); }
+}
+
+#ufo-light.ufo-ltr { animation: ufoMoveLTR var(--ufo-duration, 32000ms) linear forwards; }
+#ufo-light.ufo-rtl { animation: ufoMoveRTL var(--ufo-duration, 32000ms) linear forwards; }
+
+@keyframes ufoMoveLTR {
+    0%   { left: -7%;   opacity: 0; }
+    6%   { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { left: 107%;  opacity: 0; }
+}
+
+@keyframes ufoMoveRTL {
+    0%   { left: 107%;  opacity: 0; }
+    6%   { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { left: -7%;   opacity: 0; }
+}
+
 
 /* CORDILLERA LEJANA — neblina atmosférica */
 #horizon-far {

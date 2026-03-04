@@ -20,25 +20,29 @@ const ditherBtn = document.getElementById('ditherBtn');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 
 const faders = {
-    master: document.getElementById('masterVolume'),
-    reverb: document.getElementById('masterReverb'),
-    delay: document.getElementById('masterDelay'),
-    drift: document.getElementById('skyDrift'),
-    drones: document.getElementById('vol-drones'),
-    noise: document.getElementById('vol-noise'),
-    metal: document.getElementById('vol-metal'),
-    synths: document.getElementById('vol-synths'),
-    pads: document.getElementById('vol-pads'),
-    balizas: document.getElementById('vol-balizas')
+    master:  document.getElementById('masterVolume'),
+    reverb:  document.getElementById('masterReverb'),
+    delay:   document.getElementById('masterDelay'),
+    drift:   document.getElementById('skyDrift'),
+    drones:  document.getElementById('vol-drones'),
+    noise:   document.getElementById('vol-noise'),
+    metal:   document.getElementById('vol-metal'),
+    synths:  document.getElementById('vol-synths'),
+    pads:    document.getElementById('vol-pads'),
+    balizas: document.getElementById('vol-balizas'),
+    car:     document.getElementById('vol-car'),
+    ufo:     document.getElementById('vol-ufo'),
 };
 
 const mutes = {
-    drones: document.getElementById('mute-drones'),
-    noise: document.getElementById('mute-noise'),
-    metal: document.getElementById('mute-metal'),
-    synths: document.getElementById('mute-synths'),
-    pads: document.getElementById('mute-pads'),
-    balizas: document.getElementById('mute-balizas')
+    drones:  document.getElementById('mute-drones'),
+    noise:   document.getElementById('mute-noise'),
+    metal:   document.getElementById('mute-metal'),
+    synths:  document.getElementById('mute-synths'),
+    pads:    document.getElementById('mute-pads'),
+    balizas: document.getElementById('mute-balizas'),
+    car:     document.getElementById('mute-car'),
+    ufo:     document.getElementById('mute-ufo'),
 };
 
 // State of the 18 antennas/stars (0: off, 1: on)
@@ -54,12 +58,14 @@ const masterDelay = new Tone.FeedbackDelay("2n", 0.7).connect(masterReverb);
 
 // Channel Buses for SOTA Mixer
 const channels = {
-    drones: new Tone.Channel().connect(masterReverb),
-    noise: new Tone.Channel().connect(masterDelay),
-    metal: new Tone.Channel().connect(masterDelay),
-    synths: new Tone.Channel().connect(masterDelay),
-    pads: new Tone.Channel().connect(masterReverb),
-    balizas: new Tone.Channel().connect(masterDelay)
+    drones:  new Tone.Channel().connect(masterReverb),
+    noise:   new Tone.Channel().connect(masterDelay),
+    metal:   new Tone.Channel().connect(masterDelay),
+    synths:  new Tone.Channel().connect(masterDelay),
+    pads:    new Tone.Channel().connect(masterReverb),
+    balizas: new Tone.Channel().connect(masterDelay),
+    car:     new Tone.Channel().connect(masterReverb),  // auto en carretera
+    ufo:     new Tone.Channel().connect(masterReverb),  // OVNI theremin
 };
 
 // ======= EGA DITHER ENGINE v3 — Monkey Island 1 / Loom quality =================
@@ -226,6 +232,12 @@ function stopEGADither() {
 let baseDrone;
 let arpeggiatorPattern;
 
+// Car + UFO ambient audio nodes (created in initAudio)
+let carNoiseNode, carFilterNode, carPannerNode;
+let ufoOscA, ufoOscB, ufoLfoA, ufoLfoB, ufoPannerNode;
+// Track last car direction so UFO tends to go the other way
+let _lastCarGoingRight = Math.random() > 0.5;
+
 startBtn.addEventListener('click', async () => {
     await Tone.start();
     initAudio();
@@ -294,16 +306,22 @@ faders.drones.addEventListener('input', (e) => channels.drones.volume.rampTo(e.t
 faders.noise.addEventListener('input', (e) => channels.noise.volume.rampTo(e.target.value, 0.1));
 faders.metal.addEventListener('input', (e) => channels.metal.volume.rampTo(e.target.value, 0.1));
 faders.synths.addEventListener('input', (e) => channels.synths.volume.rampTo(e.target.value, 0.1));
-faders.pads.addEventListener('input', (e) => channels.pads.volume.rampTo(e.target.value, 0.1));
+faders.pads.addEventListener('input',    (e) => channels.pads.volume.rampTo(e.target.value, 0.1));
 faders.balizas.addEventListener('input', (e) => channels.balizas.volume.rampTo(e.target.value, 0.1));
+faders.car.addEventListener('input',     (e) => channels.car.volume.rampTo(e.target.value, 0.1));
+faders.ufo.addEventListener('input',     (e) => channels.ufo.volume.rampTo(e.target.value, 0.1));
 
 // Deriva: star drift speed + reverb decay coupling
+let _reverbDecayTimer = null;
 faders.drift.addEventListener('input', (e) => {
     const secs = parseFloat(e.target.value);
     document.getElementById('sky-layer').style.animationDuration = secs + 's';
     // Slower drift = longer, deeper reverb; faster = shorter
     const decay = 2 + ((secs - 60) / (3600 - 60)) * 18; // maps 60-3600s to 2-20s
     masterReverb.decay = decay;
+    // Tone.Reverb is a ConvolverNode: must regenerate IR after changing decay
+    clearTimeout(_reverbDecayTimer);
+    _reverbDecayTimer = setTimeout(() => masterReverb.generate(), 400);
 });
 
 // Mute Bindings
@@ -408,7 +426,12 @@ function initAudio() {
     skyLayer.style.animationDuration = faders.drift.value + 's';
 
     // --- CAR LIGHT INIT ---
+    initCarAudio();
     scheduleNextCar();
+
+    // --- UFO INIT ---
+    initUFOAudio();
+    scheduleNextUFO();
 
     window.addEventListener('resize', drawConnections);
 }
@@ -473,11 +496,12 @@ function createSineSiren(baseFreq, min, max, channel) {
 }
 
 function createPad(pitch, channel) {
+    // Route: pad → chorus → channel ONLY (no direct connect to avoid double signal / phasing)
     const pad = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "sine" },
         envelope: { attack: 4, decay: 2, sustain: 1, release: 6 },
         volume: -Infinity
-    }).connect(channel);
+    });
     const chorus = new Tone.Chorus(0.1, 2.5, 0.5).start();
     pad.connect(chorus);
     chorus.connect(channel);
@@ -517,6 +541,16 @@ function createSineCluster(freqs, channel) {
 }
 
 
+// ---- Car Audio System ----
+function initCarAudio() {
+    // chain: noise → filter → panner → channels.car → masterReverb
+    carPannerNode = new Tone.Panner(0).connect(channels.car);
+    carFilterNode = new Tone.Filter(90, 'lowpass').connect(carPannerNode);
+    carNoiseNode  = new Tone.Noise('brown').connect(carFilterNode);
+    carNoiseNode.volume.value = -80;
+    carNoiseNode.start();
+}
+
 // ---- Car Light System ----
 function scheduleNextCar() {
     // Random delay between 40s and 120s
@@ -526,20 +560,117 @@ function scheduleNextCar() {
 
 function animateCar() {
     const car = document.getElementById('car-light');
-    // Random direction: ltr or rtl
     const goingRight = Math.random() > 0.5;
+    _lastCarGoingRight = goingRight;
     // Duration: 18-32 seconds for crossing
     const duration = 18000 + Math.random() * 14000;
+    const durSec   = duration / 1000;
 
     car.className = goingRight ? 'car-ltr' : 'car-rtl';
     car.style.setProperty('--car-duration', duration + 'ms');
     car.classList.add('car-active');
+
+    // ── Audio: pan + Doppler filter sweep + volume envelope ──
+    if (carNoiseNode && carPannerNode && carFilterNode) {
+        const panStart = goingRight ? -1 :  1;
+        const panEnd   = goingRight ?  1 : -1;
+
+        // Jump pan to start, then sweep to end over full duration
+        carPannerNode.pan.value = panStart;
+        carPannerNode.pan.rampTo(panEnd, durSec);
+
+        // Doppler: low filter → peak at center → back down
+        carFilterNode.frequency.value = 70;
+        carFilterNode.frequency.rampTo(220, durSec * 0.48);
+        setTimeout(() => {
+            if (carFilterNode) carFilterNode.frequency.rampTo(70, durSec * 0.52);
+        }, duration * 0.48);
+
+        // Volume: fade in from silence, then fade out near end
+        carNoiseNode.volume.value = -80;
+        carNoiseNode.volume.rampTo(-22, 2.5);
+        setTimeout(() => {
+            if (carNoiseNode) carNoiseNode.volume.rampTo(-80, 3.5);
+        }, Math.max(0, duration - 3800));
+    }
 
     // Cleanup after animation
     setTimeout(() => {
         car.className = '';
         scheduleNextCar();
     }, duration + 4000);
+}
+
+// ---- UFO Audio System ----
+function initUFOAudio() {
+    ufoPannerNode = new Tone.Panner(0);
+    // chain: oscs → panner → tremolo → channels.ufo → masterReverb
+    const ufoTremolo = new Tone.Tremolo(7, 0.45).connect(channels.ufo).start();
+    ufoPannerNode.connect(ufoTremolo);
+
+    // Two slightly detuned sine oscillators → beating interference = eerie tone
+    ufoOscA = new Tone.Oscillator(432, 'sine').connect(ufoPannerNode);
+    ufoOscB = new Tone.Oscillator(418, 'sine').connect(ufoPannerNode); // 14 Hz beat
+
+    // LFO A: fast wobble on osc A frequency (classic theremin warble)
+    ufoLfoA = new Tone.LFO(2.2, 385, 480).start();
+    ufoLfoA.connect(ufoOscA.frequency);
+
+    // LFO B: slow sweep on osc B (makes pitch feel alive / searching)
+    ufoLfoB = new Tone.LFO(0.7, 398, 442).start();
+    ufoLfoB.connect(ufoOscB.frequency);
+
+    ufoOscA.volume.value = -Infinity;
+    ufoOscB.volume.value = -Infinity;
+    ufoOscA.start();
+    ufoOscB.start();
+}
+
+// ---- UFO Visual + Audio System ----
+function scheduleNextUFO() {
+    // Appears every 2–5 minutes
+    const delay = 120000 + Math.random() * 180000;
+    setTimeout(animateUFO, delay);
+}
+
+function animateUFO() {
+    const ufo = document.getElementById('ufo-light');
+    // Opposite direction to last car — visual contrast
+    const goingRight = !_lastCarGoingRight;
+    const duration   = 22000 + Math.random() * 18000;
+    const durSec     = duration / 1000;
+
+    ufo.className = goingRight ? 'ufo-ltr' : 'ufo-rtl';
+    ufo.style.setProperty('--ufo-duration', duration + 'ms');
+    ufo.classList.add('ufo-active');
+
+    // ── Audio: pan + volume envelope ──
+    if (ufoOscA && ufoPannerNode) {
+        const panStart = goingRight ? -1 :  1;
+        const panEnd   = goingRight ?  1 : -1;
+
+        // Jump to start position, sweep to end
+        ufoPannerNode.pan.value = panStart;
+        ufoPannerNode.pan.rampTo(panEnd, durSec);
+
+        // Fade in from silence
+        ufoOscA.volume.value = -80;
+        ufoOscB.volume.value = -80;
+        ufoOscA.volume.rampTo(-17, 4);
+        ufoOscB.volume.rampTo(-21, 4);
+
+        // Fade out before end
+        setTimeout(() => {
+            if (ufoOscA) ufoOscA.volume.rampTo(-80, 4.5);
+            if (ufoOscB) ufoOscB.volume.rampTo(-80, 4.5);
+        }, Math.max(0, duration - 5500));
+    }
+
+    // Cleanup
+    setTimeout(() => {
+        ufo.className = '';
+        scheduleNextUFO();
+    }, duration + 3000);
 }
 
 
@@ -570,7 +701,7 @@ function checkOverloadState() {
     if (activeCount >= 6) {
         // High energy: start melody if not running
         if (arpeggiatorPattern && arpeggiatorPattern.state !== 'started') {
-            arpeggiatorPattern.start(0);
+            arpeggiatorPattern.start(); // no argument: start from current Transport time
         }
         // Smooth progressive speed map covering all counts
         let newInterval;
